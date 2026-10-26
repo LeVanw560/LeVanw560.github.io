@@ -1,1 +1,224 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canva Quiz Embed</title>
+    <style>
+        :root {
+            --bg-light: #f8f9fa;
+            --box-normal: #ffffff;
+            --box-border: #e0e0e0;
+            --correct-color: #2ecc71;
+            --wrong-color: #e74c3c;
+            --text-dark: #2c3e50;
+            --btn-next: #3498db;
+            --btn-next-hover: #2980b9;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-light);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .quiz-container {
+            width: 100%;
+            max-width: 600px;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .question {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 25px;
+            min-height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .option-box {
+            background-color: var(--box-normal);
+            border: 2px solid var(--box-border);
+            border-radius: 12px;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-dark);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            user-select: none;
+        }
+
+        .option-box:hover:not(.disabled):not(.wrong):not(.correct) {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 12px rgba(0,0,0,0.08);
+            border-color: #b0b0b0;
+        }
+
+        /* Trạng thái khi click */
+        .option-box.correct {
+            background-color: var(--correct-color) !important;
+            border-color: var(--correct-color) !important;
+            color: white !important;
+            cursor: default;
+        }
+
+        .option-box.wrong {
+            background-color: var(--wrong-color) !important;
+            border-color: var(--wrong-color) !important;
+            color: white !important;
+            cursor: not-allowed;
+        }
+
+        .option-box.disabled {
+            cursor: default;
+            opacity: 0.7;
+        }
+
+        .next-btn {
+            background-color: var(--btn-next);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            visibility: hidden; /* Chỉ hiện sau khi đã chọn đúng */
+        }
+
+        .next-btn.show {
+            visibility: visible;
+        }
+
+        .next-btn:hover {
+            background-color: var(--btn-next-hover);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="quiz-container">
+        <div class="question" id="question-text">Đang tải câu hỏi...</div>
+        
+        <div class="options-grid">
+            <div class="option-box" onclick="checkAnswer(0)" id="opt-0"></div>
+            <div class="option-box" onclick="checkAnswer(1)" id="opt-1"></div>
+            <div class="option-box" onclick="checkAnswer(2)" id="opt-2"></div>
+        </div>
+
+        <button class="next-btn" id="next-button" onclick="nextQuestion()">Tiếp tục</button>
+    </div>
+
+    <script>
+        // Dữ liệu câu hỏi mẫu (Bạn có thể tự do chỉnh sửa hoặc thêm câu hỏi)
+        const quizData = [
+            {
+                question: "Thủ đô của Việt Nam là thành phố nào?",
+                options: ["Đà Nẵng", "Hà Nội", "TP. HCM"],
+                correct: 1 // Vị trí số 1 (Hà Nội)
+            },
+            {
+                question: "Trái Đất là hành tinh thứ mấy tính từ Mặt Trời?",
+                options: ["Thứ 2", "Thứ 4", "Thứ 3"],
+                correct: 2 // Vị trí số 2 (Thứ 3)
+            },
+            {
+                question: "Số nào sau đây là số nguyên tố?",
+                options: ["4", "7", "9"],
+                correct: 1 // Vị trí số 1 (7)
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let isCorrected = false; // Trạng thái xem đã tìm ra câu trả lời đúng chưa
+
+        const questionEl = document.getElementById("question-text");
+        const nextBtn = document.getElementById("next-button");
+
+        function loadQuestion() {
+            isCorrected = false;
+            nextBtn.classList.remove("show");
+            
+            const currentQuiz = quizData[currentQuestionIndex];
+            questionEl.innerText = currentQuiz.question;
+
+            for (let i = 0; i < 3; i++) {
+                const optionBox = document.getElementById(`opt-${i}`);
+                optionBox.innerText = currentQuiz.options[i];
+                optionBox.className = "option-box"; // Reset toàn bộ class về mặc định
+            }
+        }
+
+        function checkAnswer(selectedIndex) {
+            // Nếu đã tìm ra đáp án đúng cho câu này rồi thì khóa không cho bấm nữa
+            if (isCorrected) return; 
+            
+            const currentQuiz = quizData[currentQuestionIndex];
+            const correctIndex = currentQuiz.correct;
+            const clickedBox = document.getElementById(`opt-${selectedIndex}`);
+
+            // Nếu người dùng bấm lại vào ô đã biết là sai thì bỏ qua
+            if (clickedBox.classList.contains("wrong")) return;
+
+            if (selectedIndex === correctIndex) {
+                // CHỌN ĐÚNG
+                isCorrected = true;
+                clickedBox.classList.add("correct");
+                
+                // Khóa tương tác của tất cả các ô và hiện nút Tiếp tục
+                for (let i = 0; i < 3; i++) {
+                    if (i !== selectedIndex) {
+                        document.getElementById(`opt-${i}`).classList.add("disabled");
+                    }
+                }
+                nextBtn.classList.add("show");
+            } else {
+                // CHỌN SAI: Chỉ hóa đỏ ô đó, không hiện đáp án đúng, cho phép bấm tiếp ô khác
+                clickedBox.classList.add("wrong");
+            }
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            
+            // Hết câu hỏi thì tự động quay vòng lại câu đầu tiên
+            if (currentQuestionIndex >= quizData.length) {
+                currentQuestionIndex = 0; 
+            }
+            
+            loadQuestion();
+        }
+
+        // Chạy câu hỏi đầu tiên khi bắt đầu
+        loadQuestion();
+    </script>
+</body>
+</html>
 
